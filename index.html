@@ -3,18 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OrthoWeb Pro - Quản Lý Bệnh Nhân Chỉnh Nha</title>
+    <title>OrthoWeb Pro - Tích Hợp Google Drive API Tự Động</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Three.js + STLLoader + PLYLoader -->
+    <!-- Three.js + Loaders -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Identity Services & GAPI Client -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-['Inter'] antialiased min-h-screen flex flex-col">
 
@@ -28,21 +31,29 @@
                     </div>
                     <div>
                         <span class="font-bold text-xl text-sky-800">OrthoWeb Pro</span>
-                        <span class="text-xs block text-slate-400">Nha Khoa Chuyên Sâu Chỉnh Nha</span>
+                        <span class="text-xs block text-slate-400">Đồng Bộ Cloud Google Drive Tự Động</span>
                     </div>
                 </div>
+
                 <div class="flex items-center space-x-3">
-                    <div class="text-right hidden sm:block">
-                        <div class="text-xs font-bold text-slate-800">BS. Chỉnh Nha</div>
-                        <div class="text-[10px] text-teal-600 font-medium">Bác Sĩ Trưởng Khoa</div>
-                    </div>
+                    <!-- Trạng thái kết nối Google Drive -->
+                    <button onclick="openConfigModal()" class="text-xs border border-slate-200 px-3 py-1.5 rounded-lg flex items-center space-x-1.5 hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-gear text-slate-500"></i>
+                        <span>Cài Đặt API Key</span>
+                    </button>
+
+                    <button id="btnGoogleAuth" onclick="handleAuthClick()" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow-xs transition">
+                        <i class="fa-brands fa-google text-amber-500 text-sm"></i>
+                        <span id="authStatusText">Đăng Nhập Google Drive</span>
+                    </button>
                 </div>
             </div>
+
             <!-- NAVBAR -->
             <nav class="flex space-x-2 border-t border-slate-100 overflow-x-auto text-xs sm:text-sm font-medium">
                 <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-4 py-2.5 border-b-2 border-sky-600 text-sky-700 bg-sky-50 font-semibold flex items-center space-x-1.5"><i class="fa-solid fa-chart-pie"></i><span>Tổng Quan</span></button>
-                <button onclick="switchTab('patients')" id="nav-patients" class="px-4 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-sky-600 flex items-center space-x-1.5"><i class="fa-solid fa-user-doctor"></i><span>Hồ Sơ EMR</span></button>
-                <button onclick="switchTab('viewer3d')" id="nav-viewer3d" class="px-4 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-sky-600 flex items-center space-x-1.5"><i class="fa-solid fa-cube"></i><span>Xem Mẫu Hàm 3D (Khớp Cắn Dual-Arch)</span></button>
+                <button onclick="switchTab('patients')" id="nav-patients" class="px-4 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-sky-600 flex items-center space-x-1.5"><i class="fa-solid fa-user-doctor"></i><span>Hồ Sơ & Cloud Drive</span></button>
+                <button onclick="switchTab('viewer3d')" id="nav-viewer3d" class="px-4 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-sky-600 flex items-center space-x-1.5"><i class="fa-solid fa-cube"></i><span>Trình Xem Khớp Cắn 3D</span></button>
                 <button onclick="switchTab('appointments')" id="nav-appointments" class="px-4 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-sky-600 flex items-center space-x-1.5"><i class="fa-solid fa-calendar-check"></i><span>Lịch Khám & Zalo</span></button>
                 <button onclick="switchTab('finance')" id="nav-finance" class="px-4 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-sky-600 flex items-center space-x-1.5"><i class="fa-solid fa-file-invoice-dollar"></i><span>Trả Góp & Nợ</span></button>
             </nav>
@@ -90,59 +101,45 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="patientGridContainer"></div>
         </section>
 
-        <!-- TAB 3: 3D DUAL-ARCH VIEWER (HÀM TRÊN & HÀM DƯỚI + MÀU SẮC RỰC RỠ) -->
+        <!-- TAB 3: 3D DUAL-ARCH VIEWER -->
         <section id="tab-viewer3d" class="hidden space-y-4">
-            <!-- Toolbar Tải File & Chỉnh Khớp Cắn -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col gap-4 shadow-sm">
-                <!-- Hàng 1: Nút tải 2 hàm -->
                 <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <!-- Tải hàm trên -->
-                        <label class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl cursor-pointer flex items-center space-x-1.5 transition shadow-sm">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <span>1. Nạp Hàm Trên (.ply/.stl)</span>
-                            <input type="file" id="upperInput" accept=".stl,.ply" class="hidden" onchange="handleModelUpload(event, 'upper')">
-                        </label>
-                        <span id="upperFileName" class="text-xs text-slate-500 italic max-w-[140px] truncate">Chưa có hàm trên</span>
-
-                        <!-- Tải hàm dưới -->
-                        <label class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl cursor-pointer flex items-center space-x-1.5 transition shadow-sm ml-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <span>2. Nạp Hàm Dưới (.ply/.stl)</span>
-                            <input type="file" id="lowerInput" accept=".stl,.ply" class="hidden" onchange="handleModelUpload(event, 'lower')">
-                        </label>
-                        <span id="lowerFileName" class="text-xs text-slate-500 italic max-w-[140px] truncate">Chưa có hàm dưới</span>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-sm">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-400">Đang hiển thị mẫu hàm 3D của:</div>
+                            <div class="text-sm font-bold text-slate-800" id="currentViewerPatientTitle">Chưa chọn bệnh nhân</div>
+                        </div>
                     </div>
 
                     <div class="flex items-center space-x-2">
                         <button onclick="resetCameraView()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"><i class="fa-solid fa-arrows-rotate mr-1"></i>Góc Nhìn Chuẩn</button>
                         <button onclick="capturePNG()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 shadow-sm">
                             <i class="fa-solid fa-camera"></i>
-                            <span>Chụp Ảnh Khớp Cắn</span>
+                            <span>Chụp Ảnh PNG</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Hàng 2: Điều chỉnh góc nhìn, chất liệu và Thanh trượt Đóng/Mở miệng -->
                 <div class="flex flex-wrap items-center justify-between gap-4 text-xs">
-                    <!-- Bật tắt hiển thị từng hàm -->
                     <div class="flex items-center space-x-2">
                         <span class="font-bold text-slate-600">Hiển thị:</span>
                         <div class="bg-slate-100 p-1 rounded-lg flex space-x-1">
                             <button onclick="setArchVisibility('both')" id="btnShowBoth" class="px-2.5 py-1 bg-white rounded font-bold text-slate-800 shadow-xs">Cả 2 Hàm</button>
-                            <button onclick="setArchVisibility('upper')" id="btnShowUpper" class="px-2.5 py-1 text-slate-600 hover:text-sky-600">Chỉ Hàm Trên</button>
-                            <button onclick="setArchVisibility('lower')" id="btnShowLower" class="px-2.5 py-1 text-slate-600 hover:text-sky-600">Chỉ Hàm Dưới</button>
+                            <button onclick="setArchVisibility('upper')" id="btnShowUpper" class="px-2.5 py-1 text-slate-600 hover:text-sky-600">Hàm Trên</button>
+                            <button onclick="setArchVisibility('lower')" id="btnShowLower" class="px-2.5 py-1 text-slate-600 hover:text-sky-600">Hàm Dưới</button>
                         </div>
                     </div>
 
-                    <!-- Thanh trượt Khớp Cắn (Mở / Đóng hàm) -->
                     <div class="flex items-center space-x-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
                         <span class="font-bold text-sky-800 flex items-center"><i class="fa-solid fa-ruler-vertical mr-1.5"></i>Độ Mở Khớp Cắn:</span>
                         <input type="range" id="biteGapSlider" min="0" max="30" value="0" step="0.5" oninput="adjustBiteGap(this.value)" class="w-32 accent-sky-600 cursor-pointer">
                         <span id="biteGapVal" class="font-mono font-bold text-slate-700 w-10 text-right">0 mm</span>
                     </div>
 
-                    <!-- Chế độ màu sắc -->
                     <div class="flex items-center space-x-2">
                         <span class="font-bold text-slate-600">Màu sắc:</span>
                         <div class="bg-slate-100 p-1 rounded-lg flex space-x-1">
@@ -154,18 +151,11 @@
                 </div>
             </div>
 
-            <!-- 3D Canvas Viewport -->
             <div class="w-full h-[560px] bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 rounded-2xl overflow-hidden shadow-inner relative border border-slate-800">
                 <div id="threeContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
-                
                 <div id="modelLoadingSpinner" class="hidden absolute inset-0 bg-slate-900/70 backdrop-blur-xs flex flex-col items-center justify-center text-white text-xs space-y-2 z-10">
                     <div class="w-8 h-8 border-4 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span id="spinnerText">Đang dựng mô hình và cân chỉnh màu sắc...</span>
-                </div>
-
-                <div class="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md text-white px-3.5 py-2 rounded-xl text-xs pointer-events-none border border-white/10 space-y-0.5">
-                    <p class="font-bold text-sky-400"><i class="fa-solid fa-circle-info mr-1"></i>Thao tác 3D:</p>
-                    <p class="text-[11px] text-slate-300">Chuột trái: Xoay 360° | Chuột phải: Kéo dời | Cuộn chuột: Phóng to/Thu nhỏ</p>
+                    <span id="spinnerText">Đang tải dữ liệu 3D từ Google Drive...</span>
                 </div>
             </div>
         </section>
@@ -195,7 +185,7 @@
             </div>
         </section>
 
-        <!-- TAB 5: FINANCE & INSTALLMENT -->
+        <!-- TAB 5: FINANCE -->
         <section id="tab-finance" class="hidden bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
             <h3 class="font-bold text-slate-800">Quản Lý Trả Góp & Đóng Tiền Theo Đợt</h3>
             <div class="overflow-x-auto">
@@ -219,7 +209,7 @@
     <div id="patientModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
             <div class="bg-slate-900 text-white px-5 py-3 flex justify-between items-center">
-                <h3 class="font-bold text-sm">Thêm Bệnh Nhân Mới</h3>
+                <h3 class="font-bold text-sm">Hồ Sơ Bệnh Nhân</h3>
                 <button onclick="closeModal('patientModal')" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
             </div>
             <form onsubmit="savePatient(event)" class="p-5 space-y-3 text-xs">
@@ -273,6 +263,83 @@
         </div>
     </div>
 
+    <!-- MODAL: UPLOAD VÀ ĐẨY FILE LÊN GOOGLE DRIVE -->
+    <div id="upload3dModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-sm flex items-center space-x-1.5">
+                        <i class="fa-brands fa-google-drive text-amber-400"></i>
+                        <span>Đẩy File 3D Lên Google Drive</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400" id="uploadModalPatientName">Bệnh nhân: Lê Hoàng Nam</p>
+                </div>
+                <button onclick="closeModal('upload3dModal')" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 text-xs">
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div class="font-bold text-sky-800 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-tooth"></i>
+                        <span>1. File Quét Hàm Trên (.PLY / .STL)</span>
+                    </div>
+                    <input type="file" id="modalUpperFileInput" accept=".stl,.ply" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-100 file:text-sky-700 hover:file:bg-sky-200">
+                    <div class="text-[11px] text-slate-500 italic" id="modalUpperFileStatus">Chưa có tệp</div>
+                </div>
+
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div class="font-bold text-teal-800 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-tooth"></i>
+                        <span>2. File Quét Hàm Dưới (.PLY / .STL)</span>
+                    </div>
+                    <input type="file" id="modalLowerFileInput" accept=".stl,.ply" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-100 file:text-teal-700 hover:file:bg-teal-200">
+                    <div class="text-[11px] text-slate-500 italic" id="modalLowerFileStatus">Chưa có tệp</div>
+                </div>
+
+                <!-- Thanh tiến trình upload -->
+                <div id="uploadProgressBarContainer" class="hidden space-y-1">
+                    <div class="flex justify-between text-[11px] text-slate-600 font-semibold">
+                        <span id="uploadProgressText">Đang tải lên Google Drive...</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div id="uploadProgressBar" class="bg-sky-600 h-2 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('upload3dModal')" class="px-3 py-1.5 bg-slate-100 rounded-lg text-slate-600">Đóng</button>
+                    <button type="button" id="btnConfirmUploadDrive" onclick="uploadFilesToGoogleDrive()" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg shadow-sm flex items-center space-x-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Tải Lên Google Drive</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CÀI ĐẶT CLIENT ID VÀ API KEY -->
+    <div id="configModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center">
+                <h3 class="font-bold text-sm">Cài Đặt Khóa Google Drive API</h3>
+                <button onclick="closeModal('configModal')" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <div class="p-5 space-y-3 text-xs">
+                <p class="text-slate-500">Nhập API Key và Client ID từ Google Cloud Console để kích hoạt tính năng đồng bộ tệp lên Google Drive của phòng khám.</p>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Google API Key</label>
+                    <input type="text" id="cfgApiKey" placeholder="AIzaSy..." class="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-sky-500 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">OAuth 2.0 Client ID</label>
+                    <input type="text" id="cfgClientId" placeholder="123456...apps.googleusercontent.com" class="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-sky-500 font-mono">
+                </div>
+                <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                    <button onclick="saveGoogleConfig()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg shadow-sm">Lưu Cấu Hình</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: ADD APPOINTMENT -->
     <div id="apptModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
@@ -301,20 +368,110 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT APP ENGINE -->
+    <!-- JAVASCRIPT: GOOGLE DRIVE API + THREE.JS ENGINE -->
     <script>
-        // --- 1. DATA STATE MANAGEMENT ---
-        let patients = JSON.parse(localStorage.getItem('ortho_patients')) || [
-            { id: '1', name: 'Lê Hoàng Nam', phone: '0903123456', age: 24, type: 'Mắc cài Kim loại', angle: 'Angle Class II (Hô)', totalFee: 35000000, paidFee: 20000000 },
-            { id: '2', name: 'Trần Thị Mai Anh', phone: '0988765432', age: 28, type: 'Khay Invisalign', angle: 'Angle Class I', totalFee: 80000000, paidFee: 50000000 }
+        // --- 1. GOOGLE DRIVE API CLIENT ENGINE ---
+        let tokenClient;
+        let accessToken = null;
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        function getStoredApiKey() { return localStorage.getItem('gdrive_api_key') || ''; }
+        function getStoredClientId() { return localStorage.getItem('gdrive_client_id') || ''; }
+
+        function saveGoogleConfig() {
+            const k = document.getElementById('cfgApiKey').value.trim();
+            const c = document.getElementById('cfgClientId').value.trim();
+            localStorage.setItem('gdrive_api_key', k);
+            localStorage.setItem('gdrive_client_id', c);
+            closeModal('configModal');
+            alert('Đã lưu cấu hình Google API!');
+            initGapiClient();
+        }
+
+        function initGapiClient() {
+            const apiKey = getStoredApiKey();
+            if (!apiKey || !window.gapi) return;
+
+            gapi.load('client', async () => {
+                await gapi.client.init({
+                    apiKey: apiKey,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+            });
+
+            const clientId = getStoredClientId();
+            if (clientId && window.google) {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: SCOPES,
+                    callback: (tokenResponse) => {
+                        accessToken = tokenResponse.access_token;
+                        document.getElementById('authStatusText').innerText = 'Đã Đăng Nhập Drive';
+                        document.getElementById('btnGoogleAuth').className = "bg-emerald-50 border border-emerald-300 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5";
+                        alert('Đăng nhập Google Drive thành công!');
+                    },
+                });
+            }
+        }
+
+        function handleAuthClick() {
+            const clientId = getStoredClientId();
+            const apiKey = getStoredApiKey();
+            if (!clientId || !apiKey) {
+                openConfigModal();
+                return;
+            }
+            if (!tokenClient) initGapiClient();
+            if (tokenClient) {
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            }
+        }
+
+        // Tải file trực tiếp lên Google Drive qua REST API Resumable/Multipart
+        async function uploadFileToDrive(file, fileName, folderId = null) {
+            const metadata = {
+                name: fileName,
+                mimeType: 'application/octet-stream'
+            };
+            if (folderId) metadata.parents = [folderId];
+
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', file);
+
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+                method: 'POST',
+                headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+                body: form
+            });
+            return await response.json();
+        }
+
+        // Đọc dữ liệu nhị phân (ArrayBuffer) của file từ Google Drive về Three.js
+        async function downloadDriveFile(fileId) {
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                method: 'GET',
+                headers: new Headers({ 'Authorization': 'Bearer ' + accessToken })
+            });
+            return await response.arrayBuffer();
+        }
+
+        // --- 2. DỮ LIỆU BỆNH NHÂN (LƯU DRIVE FILE ID) ---
+        let patients = JSON.parse(localStorage.getItem('ortho_patients_drive')) || [
+            { id: '1029', name: 'Lê Hoàng Nam', phone: '0903123456', age: 24, type: 'Mắc cài Kim loại', angle: 'Angle Class II (Hô)', totalFee: 35000000, paidFee: 20000000, upperFileId: '', upperFileName: '', lowerFileId: '', lowerFileName: '' },
+            { id: '1088', name: 'Trần Thị Mai Anh', phone: '0988765432', age: 28, type: 'Khay Invisalign', angle: 'Angle Class I', totalFee: 80000000, paidFee: 50000000, upperFileId: '', upperFileName: '', lowerFileId: '', lowerFileName: '' }
         ];
 
         let appointments = JSON.parse(localStorage.getItem('ortho_appts')) || [
             { id: '1', patientName: 'Lê Hoàng Nam', phone: '0903123456', datetime: '2026-08-19T08:30', note: 'Thay dây NiTi .016 x .022' }
         ];
 
+        let activePatientFor3D = null;
+        let selectedPatientForUpload = null;
+
         function saveData() {
-            localStorage.setItem('ortho_patients', JSON.stringify(patients));
+            localStorage.setItem('ortho_patients_drive', JSON.stringify(patients));
             localStorage.setItem('ortho_appts', JSON.stringify(appointments));
             renderDashboard();
             renderPatientList();
@@ -322,7 +479,6 @@
             renderFinance();
         }
 
-        // --- 2. TAB SWITCHING ---
         function switchTab(tabId) {
             ['dashboard', 'patients', 'viewer3d', 'appointments', 'finance'].forEach(id => {
                 document.getElementById('tab-' + id).classList.add('hidden');
@@ -335,6 +491,11 @@
 
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function openConfigModal() {
+            document.getElementById('cfgApiKey').value = getStoredApiKey();
+            document.getElementById('cfgClientId').value = getStoredClientId();
+            openModal('configModal');
+        }
 
         // --- 3. PATIENTS CRUD ---
         function openPatientModal() {
@@ -352,13 +513,14 @@
                 age: document.getElementById('pAge').value,
                 type: document.getElementById('pType').value,
                 angle: document.getElementById('pAngle').value,
+                upperFileId: '', upperFileName: '', lowerFileId: '', lowerFileName: '',
                 totalFee: parseFloat(document.getElementById('pTotalFee').value) || 0,
                 paidFee: parseFloat(document.getElementById('pPaidFee').value) || 0
             };
             patients.push(newP);
             saveData();
             closeModal('patientModal');
-            alert('Đã thêm hồ sơ bệnh nhân mới thành công!');
+            alert('Đã thêm hồ sơ bệnh nhân mới!');
         }
 
         function deletePatient(id) {
@@ -374,26 +536,40 @@
             container.innerHTML = '';
 
             patients.filter(p => p.name.toLowerCase().includes(query) || p.phone.includes(query)).forEach(p => {
+                const hasUpper = Boolean(p.upperFileId);
+                const hasLower = Boolean(p.lowerFileId);
+
                 const card = document.createElement('div');
                 card.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between";
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start">
                             <div>
-                                <h4 class="font-bold text-slate-800">${p.name}</h4>
-                                <span class="text-xs text-slate-400 font-mono">SĐT: ${p.phone} • ${p.age} tuổi</span>
+                                <h4 class="font-bold text-slate-800 text-sm">${p.name}</h4>
+                                <span class="text-xs text-slate-400 font-mono">BN-${p.id} • ${p.phone}</span>
                             </div>
-                            <button onclick="deletePatient('${p.id}')" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="deletePatient('${p.id}')" class="text-rose-400 hover:text-rose-600 text-xs p-1"><i class="fa-solid fa-trash"></i></button>
                         </div>
-                        <div class="bg-slate-50 p-3 rounded-xl text-xs space-y-1 mt-3">
+
+                        <div class="bg-slate-50 p-3 rounded-xl text-xs space-y-1 mt-3 border border-slate-100">
                             <div>Khí cụ: <strong class="text-slate-700">${p.type}</strong></div>
                             <div>Chẩn đoán: <span class="text-sky-700 font-semibold">${p.angle}</span></div>
-                            <div>Đã nộp: <strong class="text-emerald-600">${p.paidFee.toLocaleString('vi-VN')} đ</strong> / ${p.totalFee.toLocaleString('vi-VN')} đ</div>
+                            <div class="pt-1 flex items-center space-x-2 text-[11px]">
+                                <span class="text-slate-400">Google Drive:</span>
+                                <span class="px-1.5 py-0.5 rounded font-bold ${hasUpper ? 'bg-sky-100 text-sky-800' : 'bg-slate-200 text-slate-500'}">Hàm Trên</span>
+                                <span class="px-1.5 py-0.5 rounded font-bold ${hasLower ? 'bg-teal-100 text-teal-800' : 'bg-slate-200 text-slate-500'}">Hàm Dưới</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex space-x-2 pt-2">
-                        <button onclick="switchTab('viewer3d')" class="flex-1 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1">
-                            <i class="fa-solid fa-cube"></i><span>Xem Khớp Cắn 3D</span>
+
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                        <button onclick="openUploadDriveModal('${p.id}')" class="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1 transition">
+                            <i class="fa-brands fa-google-drive text-amber-500"></i>
+                            <span>Đẩy Lên Drive</span>
+                        </button>
+                        <button onclick="loadPatientFromDriveAndDisplay('${p.id}')" class="py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs font-bold flex items-center justify-center space-x-1 transition">
+                            <i class="fa-solid fa-cube"></i>
+                            <span>Xem 3D</span>
                         </button>
                     </div>
                 `;
@@ -401,7 +577,147 @@
             });
         }
 
-        // --- 4. ENGINE 3D DUAL-ARCH & CÂN CHỈNH MÀU SẮC CHUYÊN SÂU ---
+        // --- 4. UPLOAD VÀ TẢI TỆP 3D TỪ GOOGLE DRIVE ---
+        function openUploadDriveModal(patientId) {
+            if (!accessToken) {
+                alert('Vui lòng bấm nút "Đăng Nhập Google Drive" ở góc trên trước khi tải file!');
+                handleAuthClick();
+                return;
+            }
+            selectedPatientForUpload = patients.find(p => p.id === patientId);
+            if (!selectedPatientForUpload) return;
+
+            document.getElementById('uploadModalPatientName').innerText = `Bệnh nhân: ${selectedPatientForUpload.name} (Mã: BN-${selectedPatientForUpload.id})`;
+            document.getElementById('modalUpperFileInput').value = '';
+            document.getElementById('modalLowerFileInput').value = '';
+            document.getElementById('modalUpperFileStatus').innerText = selectedPatientForUpload.upperFileName ? `Đã lưu Drive: ${selectedPatientForUpload.upperFileName}` : 'Chưa có file';
+            document.getElementById('modalLowerFileStatus').innerText = selectedPatientForUpload.lowerFileName ? `Đã lưu Drive: ${selectedPatientForUpload.lowerFileName}` : 'Chưa có file';
+            document.getElementById('uploadProgressBarContainer').classList.add('hidden');
+            openModal('upload3dModal');
+        }
+
+        async function uploadFilesToGoogleDrive() {
+            if (!selectedPatientForUpload || !accessToken) return;
+            const upperFile = document.getElementById('modalUpperFileInput').files[0];
+            const lowerFile = document.getElementById('modalLowerFileInput').files[0];
+
+            if (!upperFile && !lowerFile) {
+                alert('Vui lòng chọn ít nhất 1 file .ply hoặc .stl!');
+                return;
+            }
+
+            const p = selectedPatientForUpload;
+            const barContainer = document.getElementById('uploadProgressBarContainer');
+            const bar = document.getElementById('uploadProgressBar');
+            const progressText = document.getElementById('uploadProgressText');
+            barContainer.classList.remove('hidden');
+
+            try {
+                if (upperFile) {
+                    progressText.innerText = 'Đang tải Hàm Trên lên Google Drive...';
+                    bar.style.width = '40%';
+                    const resUpper = await uploadFileToDrive(upperFile, `BN${p.id}_Upper_${upperFile.name}`);
+                    p.upperFileId = resUpper.id;
+                    p.upperFileName = upperFile.name;
+                }
+
+                if (lowerFile) {
+                    progressText.innerText = 'Đang tải Hàm Dưới lên Google Drive...';
+                    bar.style.width = '80%';
+                    const resLower = await uploadFileToDrive(lowerFile, `BN${p.id}_Lower_${lowerFile.name}`);
+                    p.lowerFileId = resLower.id;
+                    p.lowerFileName = lowerFile.name;
+                }
+
+                bar.style.width = '100%';
+                saveData();
+                closeModal('upload3dModal');
+                alert(`Đã lưu tệp 3D lên Google Drive thành công cho bệnh nhân ${p.name}!`);
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi tải file lên Google Drive! Vui lòng kiểm tra lại quyền đăng nhập.');
+            }
+        }
+
+        async function loadPatientFromDriveAndDisplay(patientId) {
+            const p = patients.find(x => x.id === patientId);
+            if (!p) return;
+
+            activePatientFor3D = p;
+            document.getElementById('currentViewerPatientTitle').innerText = `${p.name} (BN-${p.id} • ${p.type})`;
+            switchTab('viewer3d');
+
+            if (!p.upperFileId && !p.lowerFileId) {
+                createDefaultDemoJaws();
+                return;
+            }
+
+            if (!accessToken) {
+                alert('Vui lòng bấm nút "Đăng Nhập Google Drive" ở góc trên để tải dữ liệu 3D của bệnh nhân này!');
+                handleAuthClick();
+                return;
+            }
+
+            const spinner = document.getElementById('modelLoadingSpinner');
+            document.getElementById('spinnerText').innerText = `Đang tải mẫu hàm 3D từ Google Drive (${p.name})...`;
+            spinner.classList.remove('hidden');
+
+            try {
+                if (p.upperFileId) {
+                    const buffer = await downloadDriveFile(p.upperFileId);
+                    const isPly = p.upperFileName.toLowerCase().endsWith('.ply');
+                    upperRawGeom = parseModelGeometry(buffer, isPly);
+                    const hasColors = upperRawGeom.hasAttribute('color');
+                    const mat = createDentalMaterial(currentRenderMode, hasColors, 0xfffaf0);
+                    if (upperMesh) scene.remove(upperMesh);
+                    upperMesh = new THREE.Mesh(upperRawGeom, mat);
+                    scene.add(upperMesh);
+                } else if (upperMesh) { scene.remove(upperMesh); upperMesh = null; }
+
+                if (p.lowerFileId) {
+                    const buffer = await downloadDriveFile(p.lowerFileId);
+                    const isPly = p.lowerFileName.toLowerCase().endsWith('.ply');
+                    lowerRawGeom = parseModelGeometry(buffer, isPly);
+                    const hasColors = lowerRawGeom.hasAttribute('color');
+                    const mat = createDentalMaterial(currentRenderMode, hasColors, 0xf1f5f9);
+                    if (lowerMesh) scene.remove(lowerMesh);
+                    lowerMesh = new THREE.Mesh(lowerRawGeom, mat);
+                    scene.add(lowerMesh);
+                } else if (lowerMesh) { scene.remove(lowerMesh); lowerMesh = null; }
+
+                alignAndCenterJaws();
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi tải dữ liệu 3D từ Google Drive!');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function parseModelGeometry(arrayBuffer, isPly) {
+            let geometry;
+            if (isPly) {
+                const loader = new THREE.PLYLoader();
+                geometry = loader.parse(arrayBuffer);
+                if (geometry.hasAttribute('color')) {
+                    const colors = geometry.attributes.color;
+                    for (let i = 0; i < colors.count; i++) {
+                        let r = Math.pow(colors.getX(i), 1.4) * 1.15;
+                        let g = Math.pow(colors.getY(i), 1.4) * 1.05;
+                        let b = Math.pow(colors.getZ(i), 1.4) * 0.95;
+                        colors.setXYZ(i, Math.min(r, 1.0), Math.min(g, 1.0), Math.min(b, 1.0));
+                    }
+                    colors.needsUpdate = true;
+                }
+            } else {
+                const loader = new THREE.STLLoader();
+                geometry = loader.parse(arrayBuffer);
+            }
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+
+        // --- 5. ENGINE 3D DUAL-ARCH ---
         let scene, camera, renderer, controls;
         let upperMesh = null, lowerMesh = null;
         let upperRawGeom = null, lowerRawGeom = null;
@@ -412,44 +728,32 @@
         function init3D() {
             const container = document.getElementById('threeContainer');
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0f1d); // Nền xám đen studio
+            scene.background = new THREE.Color(0x0a0f1d);
 
             camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.set(0, 30, 80);
 
-            // BẬT CƠ CHẾ GAMMA & sRGB ĐỂ MÀU PLY ĐẬM ĐÀ, KHÔNG BỊ NHẠT
             renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.outputEncoding = THREE.sRGBEncoding; // Khắc phục triệt để lỗi màu nhạt
-            renderer.toneMapping = THREE.LinearToneMapping;
-            renderer.toneMappingExposure = 1.0;
+            renderer.outputEncoding = THREE.sRGBEncoding;
             container.appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
 
-            // HỆ THỐNG ÁNH SÁNG CÂN BẰNG ĐỘ BÃO HÒA MÀU (High-Saturation Studio Lights)
-            const ambLight = new THREE.AmbientLight(0xffffff, 0.45); // Giảm nhẹ ambient để tăng độ sâu
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.45);
             scene.add(ambLight);
-
-            // Đèn chiếu chính từ phía trước góc nhìn bác sĩ
             const frontKeyLight = new THREE.DirectionalLight(0xffffff, 0.85);
             frontKeyLight.position.set(0, 30, 60);
             scene.add(frontKeyLight);
-
-            // Đèn chiếu hàm trên
             const topLight = new THREE.DirectionalLight(0xfff7ed, 0.6);
             topLight.position.set(0, 60, 0);
             scene.add(topLight);
-
-            // Đèn chiếu hàm dưới
             const bottomLight = new THREE.DirectionalLight(0xf0fdfa, 0.5);
             bottomLight.position.set(0, -60, 0);
             scene.add(bottomLight);
-
-            // Đèn viền hai bên tạo chiều sâu kẽ răng
             const leftLight = new THREE.DirectionalLight(0xffffff, 0.4);
             leftLight.position.set(-50, 10, 20);
             scene.add(leftLight);
@@ -473,36 +777,18 @@
             animate();
         }
 
-        // Tạo vật liệu chân thực với độ bão hòa màu sắc cao
         function createDentalMaterial(mode, hasVertexColors = false, fallbackColor = 0xffffff) {
             if (mode === 'vibrant') {
                 if (hasVertexColors) {
-                    return new THREE.MeshStandardMaterial({
-                        vertexColors: true,
-                        roughness: 0.35,
-                        metalness: 0.02,
-                        side: THREE.DoubleSide
-                    });
+                    return new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.02, side: THREE.DoubleSide });
                 } else {
-                    return new THREE.MeshStandardMaterial({
-                        color: fallbackColor,
-                        roughness: 0.3,
-                        metalness: 0.05,
-                        side: THREE.DoubleSide
-                    });
+                    return new THREE.MeshStandardMaterial({ color: fallbackColor, roughness: 0.3, metalness: 0.05, side: THREE.DoubleSide });
                 }
             } else {
-                // Thạch cao HD
-                return new THREE.MeshStandardMaterial({
-                    color: fallbackColor,
-                    roughness: 0.45,
-                    metalness: 0.0,
-                    side: THREE.DoubleSide
-                });
+                return new THREE.MeshStandardMaterial({ color: fallbackColor, roughness: 0.45, metalness: 0.0, side: THREE.DoubleSide });
             }
         }
 
-        // Tạo 2 hàm demo mặc định
         function createDefaultDemoJaws() {
             if (upperMesh) scene.remove(upperMesh);
             if (lowerMesh) scene.remove(lowerMesh);
@@ -526,92 +812,6 @@
             scene.add(lowerMesh);
         }
 
-        // Xử lý nạp file (Hàm Trên hoặc Hàm Dưới)
-        function handleModelUpload(event, archType) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const fileName = file.name;
-            const ext = fileName.split('.').pop().toLowerCase();
-            
-            if (archType === 'upper') {
-                document.getElementById('upperFileName').innerText = fileName;
-            } else {
-                document.getElementById('lowerFileName').innerText = fileName;
-            }
-
-            const spinner = document.getElementById('modelLoadingSpinner');
-            document.getElementById('spinnerText').innerText = `Đang nạp và tối ưu màu sắc ${archType === 'upper' ? 'Hàm Trên' : 'Hàm Dưới'}...`;
-            spinner.classList.remove('hidden');
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const contents = e.target.result;
-                    let geometry;
-
-                    if (ext === 'ply') {
-                        const loader = new THREE.PLYLoader();
-                        geometry = loader.parse(contents);
-
-                        // CÂN BẰNG VÀ TĂNG ĐỘ BÃO HÒA MÀU VERTEX (Gamma Correction cho dữ liệu gốc PLY)
-                        if (geometry.hasAttribute('color')) {
-                            const colors = geometry.attributes.color;
-                            for (let i = 0; i < colors.count; i++) {
-                                let r = colors.getX(i);
-                                let g = colors.getY(i);
-                                let b = colors.getZ(i);
-
-                                // Chuyển đổi Gamma để màu đỏ/hồng nướu và trắng ngà của răng đậm đà tự nhiên
-                                r = Math.pow(r, 1.4) * 1.15;
-                                g = Math.pow(g, 1.4) * 1.05;
-                                b = Math.pow(b, 1.4) * 0.95;
-
-                                colors.setXYZ(i, Math.min(r, 1.0), Math.min(g, 1.0), Math.min(b, 1.0));
-                            }
-                            colors.needsUpdate = true;
-                        }
-                    } else if (ext === 'stl') {
-                        const loader = new THREE.STLLoader();
-                        geometry = loader.parse(contents);
-                    } else {
-                        alert('Định dạng không được hỗ trợ! Vui lòng chọn .PLY hoặc .STL');
-                        spinner.classList.add('hidden');
-                        return;
-                    }
-
-                    geometry.computeVertexNormals(); // Làm mịn bề mặt
-
-                    const hasColors = geometry.hasAttribute('color');
-                    const fallbackColor = (archType === 'upper') ? 0xfffaf0 : 0xf1f5f9;
-                    const material = createDentalMaterial(currentRenderMode, hasColors, fallbackColor);
-                    const newMesh = new THREE.Mesh(geometry, material);
-
-                    if (archType === 'upper') {
-                        if (upperMesh) scene.remove(upperMesh);
-                        upperRawGeom = geometry;
-                        upperMesh = newMesh;
-                        scene.add(upperMesh);
-                    } else {
-                        if (lowerMesh) scene.remove(lowerMesh);
-                        lowerRawGeom = geometry;
-                        lowerMesh = newMesh;
-                        scene.add(lowerMesh);
-                    }
-
-                    // Tự động căn tâm và chỉnh góc nhìn bao quát cả 2 hàm
-                    alignAndCenterJaws();
-                    spinner.classList.add('hidden');
-                } catch (err) {
-                    console.error(err);
-                    alert('Lỗi đọc tệp 3D! Vui lòng kiểm tra file xuất từ máy scan.');
-                    spinner.classList.add('hidden');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        // Tự động tính toán tâm hình học chung của cả 2 hàm
         function alignAndCenterJaws() {
             const box = new THREE.Box3();
             if (upperMesh) box.expandByObject(upperMesh);
@@ -623,7 +823,6 @@
                 const size = new THREE.Vector3();
                 box.getSize(size);
 
-                // Dời cả 2 hàm về gốc tọa độ (0,0,0) nhưng giữ nguyên vị trí khớp cắn tương đối
                 if (upperMesh) upperMesh.position.sub(center);
                 if (lowerMesh) lowerMesh.position.sub(center);
 
@@ -638,7 +837,6 @@
             }
         }
 
-        // Điều chỉnh đóng / mở khớp cắn
         function adjustBiteGap(val) {
             const gap = parseFloat(val);
             document.getElementById('biteGapVal').innerText = `${gap} mm`;
@@ -646,7 +844,6 @@
             if (lowerMesh) lowerMesh.position.y = originalLowerY - (gap * 0.5);
         }
 
-        // Đổi trạng thái hiển thị từng hàm
         function setArchVisibility(mode) {
             ['btnShowBoth', 'btnShowUpper', 'btnShowLower'].forEach(id => {
                 document.getElementById(id).className = "px-2.5 py-1 text-slate-600 hover:text-sky-600";
@@ -672,7 +869,6 @@
             ['btnMatVibrant', 'btnMatPlaster'].forEach(id => {
                 document.getElementById(id).className = "px-2.5 py-1 text-slate-600 hover:text-sky-600";
             });
-
             if (mode === 'vibrant') document.getElementById('btnMatVibrant').className = "px-2.5 py-1 bg-white rounded font-bold text-slate-800 shadow-xs";
             if (mode === 'plaster') document.getElementById('btnMatPlaster').className = "px-2.5 py-1 bg-white rounded font-bold text-slate-800 shadow-xs";
 
@@ -683,7 +879,6 @@
                 newMat.wireframe = isWireframeActive;
                 mesh.material = newMat;
             };
-
             updateMat(upperMesh, upperRawGeom, 0xfffaf0);
             updateMat(lowerMesh, lowerRawGeom, 0xf1f5f9);
         }
@@ -694,19 +889,18 @@
             if (lowerMesh && lowerMesh.material) lowerMesh.material.wireframe = isWireframeActive;
         }
 
-        function resetCameraView() {
-            alignAndCenterJaws();
-        }
+        function resetCameraView() { alignAndCenterJaws(); }
 
         function capturePNG() {
             renderer.render(scene, camera);
             const link = document.createElement('a');
-            link.download = `khop_can_3d_${Date.now()}.png`;
+            const pName = activePatientFor3D ? activePatientFor3D.name.replace(/\s+/g, '_') : 'khop_can';
+            link.download = `3D_${pName}_${Date.now()}.png`;
             link.href = renderer.domElement.toDataURL('image/png');
             link.click();
         }
 
-        // --- 5. APPOINTMENTS & REAL ZALO WEBHOOK / SMS ---
+        // --- 6. APPOINTMENTS & FINANCE ---
         function openApptModal() {
             const select = document.getElementById('apptPatientSelect');
             select.innerHTML = '';
@@ -733,10 +927,8 @@
 
         function sendZaloMessage(phone, name, dateStr, note) {
             const cleanPhone = phone.replace(/[^0-9]/g, '');
-            const msg = encodeURIComponent(`Chào bạn ${name}, Phòng khám nhắc bạn có lịch hẹn tái khám chỉnh nha vào lúc ${dateStr}. Nội dung: ${note}. Vui lòng phản hồi nếu cần đổi giờ.`);
-            const zaloUrl = `https://zalo.me/${cleanPhone}`;
-            window.open(zaloUrl, '_blank');
-            alert(`Đang mở Zalo gửi tin nhắn nhắc lịch tới bệnh nhân ${name} (${phone})!`);
+            const msg = encodeURIComponent(`Chào bạn ${name}, Phòng khám nhắc bạn có lịch hẹn tái khám chỉnh nha vào lúc ${dateStr}. Nội dung: ${note}.`);
+            window.open(`https://zalo.me/${cleanPhone}`, '_blank');
         }
 
         function renderAppointments() {
@@ -760,7 +952,6 @@
             });
         }
 
-        // --- 6. FINANCE & INSTALLMENT ---
         function collectMoney(patientId) {
             const amount = prompt('Nhập số tiền bệnh nhân đóng đợt này (VNĐ):', '2000000');
             if (amount && !isNaN(amount)) {
@@ -793,7 +984,6 @@
             });
         }
 
-        // --- 7. DASHBOARD METRICS & CHART ---
         let revChart;
         function renderDashboard() {
             document.getElementById('dashTotalPatients').innerText = patients.length;
@@ -816,11 +1006,11 @@
             });
         }
 
-        // ON LOAD INITIALIZATION
         window.onload = () => {
             init3D();
             initChart();
             saveData();
+            setTimeout(initGapiClient, 1000);
         };
     </script>
 </body>
