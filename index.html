@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrthoWeb Pro - Hệ Thống Quản Lý Bệnh Nhân Chỉnh Nha On-Web</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Three.js for 3D Dental Viewer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Chart.js for Financial Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        },
+                        tealmed: {
+                            500: '#0d9488',
+                            600: '#0d9488',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .tab-btn.active {
+            color: #0284c7;
+            border-bottom-color: #0284c7;
+            background-color: #f0f9ff;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- TOP HEADER / NAVIGATION -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo & Clinic Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                        <i class="fa-solid fa-tooth text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-heading font-extrabold text-xl bg-gradient-to-r from-sky-700 to-teal-600 bg-clip-text text-transparent">OrthoWeb Pro</span>
+                        <span class="text-xs block text-slate-400 font-medium">Nha Khoa Chuyên Sâu Chỉnh Nha</span>
+                    </div>
+                </div>
+
+                <!-- Global Search & Role Selector -->
+                <div class="flex items-center space-x-4">
+                    <div class="relative hidden md:block w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+                        <input type="text" id="globalSearch" placeholder="Tìm tên, SĐT, Mã BN..." class="w-full pl-9 pr-4 py-1.5 text-sm bg-slate-100 border border-transparent rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none transition-all">
+                    </div>
+
+                    <!-- Role Badge Switcher -->
+                    <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <span class="text-xs font-semibold px-2 text-slate-500">Vai trò:</span>
+                        <select id="roleSelector" onchange="switchRole(this.value)" class="bg-white text-xs font-semibold text-sky-700 py-1 px-2.5 rounded-md border border-slate-200 shadow-sm focus:outline-none cursor-pointer">
+                            <option value="doctor">BS. Chỉnh Nha (Full)</option>
+                            <option value="receptionist">Lễ Tân / CRM</option>
+                            <option value="accountant">Kế Toán / Thu Ngân</option>
+                        </select>
+                    </div>
+
+                    <!-- User Profile Avatar -->
+                    <div class="flex items-center space-x-3 border-l border-slate-200 pl-4">
+                        <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&auto=format&fit=crop&q=80" alt="Doctor Avatar" class="w-9 h-9 rounded-full object-cover ring-2 ring-sky-500/30">
+                        <div class="hidden lg:block text-left">
+                            <div class="text-xs font-bold text-slate-800" id="userNameLabel">BS. Nguyễn Minh Tuấn</div>
+                            <div class="text-[10px] text-teal-600 font-medium" id="userRoleLabel">Trưởng Khoa Niềng Răng</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN NAVIGATION TABS -->
+            <nav class="flex space-x-1 border-t border-slate-100 overflow-x-auto text-xs sm:text-sm font-medium">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn active px-4 py-2.5 border-b-2 border-transparent hover:text-sky-600 transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Tổng Quan</span>
+                </button>
+                <button onclick="switchTab('patients')" id="nav-patients" class="tab-btn px-4 py-2.5 border-b-2 border-transparent hover:text-sky-600 transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-user-doctor"></i>
+                    <span>Hồ Sơ Bệnh Nhân (EMR)</span>
+                </button>
+                <button onclick="switchTab('viewer3d')" id="nav-viewer3d" class="tab-btn px-4 py-2.5 border-b-2 border-transparent hover:text-sky-600 transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-cube"></i>
+                    <span>Trình Xem Dấu Hàm 3D</span>
+                    <span class="bg-sky-100 text-sky-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">WebGL</span>
+                </button>
+                <button onclick="switchTab('appointments')" id="nav-appointments" class="tab-btn px-4 py-2.5 border-b-2 border-transparent hover:text-sky-600 transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Lịch Tái Khám & Zalo</span>
+                </button>
+                <button onclick="switchTab('finance')" id="nav-finance" class="tab-btn px-4 py-2.5 border-b-2 border-transparent hover:text-sky-600 transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span>Trả Góp & Tài Chính</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            <!-- Top Stat Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Tổng BN Niềng Răng</p>
+                        <h3 class="text-2xl font-extrabold text-slate-800 mt-1">248</h3>
+                        <p class="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i> +12% so với tháng trước
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Lịch Siết Răng Hôm Nay</p>
+                        <h3 class="text-2xl font-extrabold text-sky-600 mt-1">14</h3>
+                        <p class="text-[11px] text-slate-500 font-medium mt-1">
+                            <span class="text-emerald-600 font-bold">11</span> đã xác nhận qua Zalo
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-calendar-day"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Thu Trả Góp Tháng Này</p>
+                        <h3 class="text-2xl font-extrabold text-emerald-600 mt-1">185M</h3>
+                        <p class="text-[11px] text-slate-400 font-medium mt-1">Đạt 92% chỉ tiêu đợt 1</p>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">BN Đeo Khay Invisalign</p>
+                        <h3 class="text-2xl font-extrabold text-purple-600 mt-1">64</h3>
+                        <p class="text-[11px] text-purple-600 font-semibold mt-1">
+                            8 BN cần đổi Step tuần này
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-gem"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Section: Quick Appointments + Financial Chart -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Today's Appointment Queue -->
+                <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-slate-800">Lịch Tái Khám Siết Răng / Đổi Khay Hôm Nay</h3>
+                            <p class="text-xs text-slate-400">Danh sách bệnh nhân đăng ký tái khám ngày <span class="font-semibold text-slate-600">18/08/2026</span></p>
+                        </div>
+                        <button onclick="openModal('addAppointmentModal')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-1 shadow-sm">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Tạo Lịch Hẹn</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px]">
+                                <tr>
+                                    <th class="py-2.5 px-3 rounded-l-lg">Giờ</th>
+                                    <th class="py-2.5 px-3">Bệnh Nhân</th>
+                                    <th class="py-2.5 px-3">Khí Cụ / Dịch Vụ</th>
+                                    <th class="py-2.5 px-3">Nội Dung Tái Khám</th>
+                                    <th class="py-2.5 px-3">Trạng Thái Zalo</th>
+                                    <th class="py-2.5 px-3 rounded-r-lg text-right">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700" id="todayApptTable">
+                                <!-- Row 1 -->
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="py-3 px-3 font-bold text-sky-700">08:30</td>
+                                    <td class="py-3 px-3 font-semibold">
+                                         Lê Hoàng Nam
+                                        <span class="block text-[10px] text-slate-400">BN-1029 • 24t</span>
+                                    </td>
+                                    <td class="py-3 px-3"><span class="bg-sky-100 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded">Mắc cài Kim loại</span></td>
+                                    <td class="py-3 px-3">Thay dây cung NiTi .016 x .022, cắm Minivis hàm trên</td>
+                                    <td class="py-3 px-3"><span class="text-emerald-600 font-medium flex items-center"><i class="fa-solid fa-circle-check mr-1"></i> Đã nhắc Zalo</span></td>
+                                    <td class="py-3 px-3 text-right">
+                                        <button onclick="openPatientDetail('BN-1029')" class="text-sky-600 hover:text-sky-800 font-semibold hover:underline">Vào Khám</button>
+                                    </td>
+                                </tr>
+                                <!-- Row 2 -->
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="py-3 px-3 font-bold text-sky-700">09:15</td>
+                                    <td class="py-3 px-3 font-semibold">
+                                         Trần Thị Mai Anh
+                                        <span class="block text-[10px] text-slate-400">BN-1088 • 28t</span>
+                                    </td>
+                                    <td class="py-3 px-3"><span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded">Invisalign First</span></td>
+                                    <td class="py-3 px-3">Giao khay #12 - #16, kiểm tra mài kẽ (IPR)</td>
+                                    <td class="py-3 px-3"><span class="text-emerald-600 font-medium flex items-center"><i class="fa-solid fa-circle-check mr-1"></i> Đã nhắc Zalo</span></td>
+                                    <td class="py-3 px-3 text-right">
+                                        <button onclick="openPatientDetail('BN-1088')" class="text-sky-600 hover:text-sky-800 font-semibold hover:underline">Vào Khám</button>
+                                    </td>
+                                </tr>
+                                <!-- Row 3 -->
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="py-3 px-3 font-bold text-sky-700">10:00</td>
+                                    <td class="py-3 px-3 font-semibold">
+                                         Phạm Quốc Bảo
+                                        <span class="block text-[10px] text-slate-400">BN-1102 • 19t</span>
+                                    </td>
+                                    <td class="py-3 px-3"><span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">Mắc cài Sứ Tự Buộc</span></td>
+                                    <td class="py-3 px-3">Thay thun liên hàm Class II, siết răng định kỳ</td>
+                                    <td class="py-3 px-3"><span class="text-amber-600 font-medium flex items-center"><i class="fa-solid fa-clock mr-1"></i> Chờ phản hồi</span></td>
+                                    <td class="py-3 px-3 text-right">
+                                        <button onclick="sendZaloReminder('Phạm Quốc Bảo', '10:00')" class="text-teal-600 hover:text-teal-800 font-semibold hover:underline"><i class="fa-solid fa-paper-plane mr-1"></i>Gửi Zalo</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Monthly Revenue Chart -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-heading font-bold text-base text-slate-800">Doanh Thu Trả Góp</h3>
+                            <span class="text-[11px] text-slate-400">2026 (Triệu VNĐ)</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-4">Biểu đồ thu tiền trả góp điều trị chỉnh nha theo từng tháng.</p>
+                        <div class="h-56 relative">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Dự kiến thu đợt cuối: <strong class="text-slate-800">240M</strong></span>
+                        <button onclick="switchTab('finance')" class="text-sky-600 font-semibold hover:underline">Xem Chi Tiết Sổ Nợ &rarr;</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: PATIENTS (EMR) ================= -->
+        <section id="tab-patients" class="tab-content hidden space-y-6">
+            <!-- Search, Filter & Action Header -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3 w-full sm:w-auto">
+                    <input type="text" id="patientFilterInput" onkeyup="filterPatientList()" placeholder="Lọc theo tên, SĐT, loại mắc cài..." class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg w-64 focus:outline-none focus:border-sky-500">
+                    <select id="typeFilter" onchange="filterPatientList()" class="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:border-sky-500">
+                        <option value="ALL">Tất cả khí cụ</option>
+                        <option value="Mắc cài kim loại">Mắc cài kim loại</option>
+                        <option value="Invisalign">Khay Invisalign</option>
+                        <option value="Mắc cài sứ">Mắc cài sứ</option>
+                    </select>
+                </div>
+
+                <button onclick="openModal('addPatientModal')" class="bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Tạo Hồ Sơ Bệnh Nhân Mới</span>
+                </button>
+            </div>
+
+            <!-- Patient List Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="patientGrid">
+                <!-- Patient Card 1 -->
+                <div class="patient-card bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between" data-name="Lê Hoàng Nam" data-type="Mắc cài kim loại">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center space-x-3">
+                                <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80" alt="Patient" class="w-12 h-12 rounded-full object-cover ring-2 ring-sky-500/20">
+                                <div>
+                                    <h4 class="font-heading font-bold text-slate-800 text-base">Lê Hoàng Nam</h4>
+                                    <span class="text-xs text-slate-400 font-mono">BN-1029 • Nam • 24T</span>
+                                </div>
+                            </div>
+                            <span class="bg-sky-100 text-sky-800 text-[10px] font-bold px-2 py-1 rounded-full">Angle Class II</span>
+                        </div>
+
+                        <div class="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Khí cụ:</span>
+                                <span class="font-semibold text-slate-700">Mắc cài Kim loại Tự Buộc</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Tiến trình:</span>
+                                <span class="font-semibold text-teal-600">Tháng 14 / 24 tháng</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Giai đoạn:</span>
+                                <span class="font-semibold text-purple-700">Đang cắm Minivis & Siết răng</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <button onclick="loadSampleTo3D('BN-1029')" class="text-xs text-teal-600 hover:text-teal-800 font-semibold flex items-center space-x-1">
+                            <i class="fa-solid fa-cube"></i>
+                            <span>Xem Hàm 3D</span>
+                        </button>
+                        <button onclick="openPatientDetail('BN-1029')" class="bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
+                            Hồ Sơ EMR &rarr;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Patient Card 2 -->
+                <div class="patient-card bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between" data-name="Trần Thị Mai Anh" data-type="Invisalign">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center space-x-3">
+                                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80" alt="Patient" class="w-12 h-12 rounded-full object-cover ring-2 ring-purple-500/20">
+                                <div>
+                                    <h4 class="font-heading font-bold text-slate-800 text-base">Trần Thị Mai Anh</h4>
+                                    <span class="text-xs text-slate-400 font-mono">BN-1088 • Nữ • 28T</span>
+                                </div>
+                            </div>
+                            <span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-1 rounded-full">Invisalign</span>
+                        </div>
+
+                        <div class="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Số khay niềng:</span>
+                                <span class="font-semibold text-slate-700">Khay #12 / tổng 32 khay</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Đeo khay:</span>
+                                <span class="font-semibold text-emerald-600">Đạt 22h/ngày (Tốt)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Lịch đổi khay:</span>
+                                <span class="font-semibold text-slate-700">22/08/2026 (Khay #13)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <button onclick="loadSampleTo3D('BN-1088')" class="text-xs text-teal-600 hover:text-teal-800 font-semibold flex items-center space-x-1">
+                            <i class="fa-solid fa-cube"></i>
+                            <span>Xem Hàm 3D</span>
+                        </button>
+                        <button onclick="openPatientDetail('BN-1088')" class="bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
+                            Hồ Sơ EMR &rarr;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Patient Card 3 -->
+                <div class="patient-card bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between" data-name="Phạm Quốc Bảo" data-type="Mắc cài sứ">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center space-x-3">
+                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80" alt="Patient" class="w-12 h-12 rounded-full object-cover ring-2 ring-amber-500/20">
+                                <div>
+                                    <h4 class="font-heading font-bold text-slate-800 text-base">Phạm Quốc Bảo</h4>
+                                    <span class="text-xs text-slate-400 font-mono">BN-1102 • Nam • 19T</span>
+                                </div>
+                            </div>
+                            <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-1 rounded-full">Angle Class III</span>
+                        </div>
+
+                        <div class="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Khí cụ:</span>
+                                <span class="font-semibold text-slate-700">Mắc cài Sứ Tự Buộc</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Tiến trình:</span>
+                                <span class="font-semibold text-amber-600">Tháng 6 / 20 tháng</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Nội dung siết:</span>
+                                <span class="font-semibold text-slate-700">Đang kéo lùi răng cửa</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <button onclick="loadSampleTo3D('BN-1102')" class="text-xs text-teal-600 hover:text-teal-800 font-semibold flex items-center space-x-1">
+                            <i class="fa-solid fa-cube"></i>
+                            <span>Xem Hàm 3D</span>
+                        </button>
+                        <button onclick="openPatientDetail('BN-1102')" class="bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
+                            Hồ Sơ EMR &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: 3D JAW VIEWER ================= -->
+        <section id="tab-viewer3d" class="tab-content hidden space-y-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 class="font-heading font-bold text-lg text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-cube text-sky-600"></i>
+                        <span>Trình Xem & Mổ Phẻ Dấu Hàm 3D (WebGL Engine)</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Đang chọn bệnh nhân: <strong id="active3dPatientName" class="text-sky-700 font-bold">Lê Hoàng Nam (BN-1029)</strong></p>
+                </div>
+
+                <!-- 3D Toolbar Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="bg-slate-100 p-1 rounded-lg flex space-x-1 text-xs">
+                        <button onclick="setArchView('both')" class="px-2.5 py-1.5 bg-white rounded-md shadow-sm font-semibold text-slate-700 hover:text-sky-600">Khớp Cắn (Cả 2 Hàm)</button>
+                        <button onclick="setArchView('upper')" class="px-2.5 py-1.5 rounded-md font-medium text-slate-600 hover:text-sky-600">Hàm Trên</button>
+                        <button onclick="setArchView('lower')" class="px-2.5 py-1.5 rounded-md font-medium text-slate-600 hover:text-sky-600">Hàm Dưới</button>
+                    </div>
+
+                    <div class="bg-slate-100 p-1 rounded-lg flex space-x-1 text-xs">
+                        <button onclick="setMaterialMode('gypsum')" class="px-2.5 py-1.5 bg-white rounded-md shadow-sm font-semibold text-slate-700">Màu Thạch Cao</button>
+                        <button onclick="setMaterialMode('natural')" class="px-2.5 py-1.5 rounded-md font-medium text-slate-600">Tự Nhiên</button>
+                        <button onclick="toggleWireframe()" class="px-2.5 py-1.5 rounded-md font-medium text-slate-600">Khung Dây</button>
+                    </div>
+
+                    <button onclick="take3DSnapshot()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center space-x-1.5 transition-all active:scale-95">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Chụp Ảnh Góc Nhìn</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3D Canvas Viewport -->
+            <div class="relative w-full h-[520px] bg-slate-900 rounded-2xl overflow-hidden shadow-inner border border-slate-800">
+                <div id="threeCanvasContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+                <!-- Overlay Instructions -->
+                <div class="absolute bottom-4 left-4 bg-slate-950/70 backdrop-blur-md text-white px-3.5 py-2 rounded-xl text-xs space-y-1 pointer-events-none border border-white/10">
+                    <div class="font-bold text-sky-400 flex items-center space-x-1">
+                        <i class="fa-solid fa-hand-pointer"></i>
+                        <span>Thao tác 3D:</span>
+                    </div>
+                    <p class="text-[11px] text-slate-300">Chuột trái: Xoay 360° | Chuột phải: Di chuyển | Cuộn chuột: Phóng to / Thu nhỏ</p>
+                </div>
+
+                <!-- Snapshot Toast Notification -->
+                <div id="snapshotToast" class="hidden absolute top-4 right-4 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 animate-bounce">
+                    <i class="fa-solid fa-circle-check text-base"></i>
+                    <span>Đã chụp góc nhìn 3D thành công!</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 4: APPOINTMENTS & ZALO ================= -->
+        <section id="tab-appointments" class="tab-content hidden space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="font-heading font-bold text-lg text-slate-800">Lịch Tái Khám & Tự Động Nhắc Lịch Zalo ZNS</h3>
+                        <p class="text-xs text-slate-400">Tự động hóa thông báo nhắc siết răng, đeo khay trước 1-2 ngày.</p>
+                    </div>
+
+                    <button onclick="openModal('addAppointmentModal')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm transition-all flex items-center space-x-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Thêm Lịch Khám Mới</span>
+                    </button>
+                </div>
+
+                <!-- Appointment Timeline Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px]">
+                            <tr>
+                                <th class="py-3 px-4">Mã Lịch</th>
+                                <th class="py-3 px-4">Bệnh Nhân</th>
+                                <th class="py-3 px-4">Số Điện Thoại</th>
+                                <th class="py-3 px-4">Ngày & Giờ Khám</th>
+                                <th class="py-3 px-4">Bác Sĩ Phụ Trách</th>
+                                <th class="py-3 px-4">Mục Đích Khám</th>
+                                <th class="py-3 px-4">Trạng Thái Zalo</th>
+                                <th class="py-3 px-4 text-right">Gửi Nhắc Lịch</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-3 px-4 font-mono font-bold text-slate-500">LH-8821</td>
+                                <td class="py-3 px-4 font-bold text-slate-800">Lê Hoàng Nam</td>
+                                <td class="py-3 px-4">0903.123.456</td>
+                                <td class="py-3 px-4 font-semibold text-sky-700">18/08/2026 - 08:30</td>
+                                <td class="py-3 px-4">BS. Nguyễn Minh Tuấn</td>
+                                <td class="py-3 px-4">Siết răng + Cắm Minivis</td>
+                                <td class="py-3 px-4"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Đã nhận ZNS</span></td>
+                                <td class="py-3 px-4 text-right">
+                                    <button onclick="sendZaloReminder('Lê Hoàng Nam', '08:30 ngày 18/08')" class="text-teal-600 hover:text-teal-800 font-bold"><i class="fa-solid fa-paper-plane mr-1"></i>Gửi Lại</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-3 px-4 font-mono font-bold text-slate-500">LH-8822</td>
+                                <td class="py-3 px-4 font-bold text-slate-800">Trần Thị Mai Anh</td>
+                                <td class="py-3 px-4">0988.765.432</td>
+                                <td class="py-3 px-4 font-semibold text-sky-700">22/08/2026 - 14:00</td>
+                                <td class="py-3 px-4">BS. Nguyễn Minh Tuấn</td>
+                                <td class="py-3 px-4">Giao Khay Invisalign #13</td>
+                                <td class="py-3 px-4"><span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]">Chờ gửi tự động</span></td>
+                                <td class="py-3 px-4 text-right">
+                                    <button onclick="sendZaloReminder('Trần Thị Mai Anh', '14:00 ngày 22/08')" class="text-teal-600 hover:text-teal-800 font-bold"><i class="fa-solid fa-paper-plane mr-1"></i>Gửi Zalo Ngay</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 5: FINANCE & INSTALLMENT ================= -->
+        <section id="tab-finance" class="tab-content hidden space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="font-heading font-bold text-lg text-slate-800">Quản Lý Hợp Đồng & Lộ Trình Trả Góp Chỉnh Nha</h3>
+                        <p class="text-xs text-slate-400">Theo dõi chi tiết các đợt đóng tiền trả góp theo tiến độ siết răng.</p>
+                    </div>
+                </div>
+
+                <!-- Installment Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px]">
+                            <tr>
+                                <th class="py-3 px-4">Bệnh Nhân</th>
+                                <th class="py-3 px-4">Gói Niềng Răng</th>
+                                <th class="py-3 px-4">Tổng Chi Phí</th>
+                                <th class="py-3 px-4">Đã Thanh Toán</th>
+                                <th class="py-3 px-4">Còn Lại (Công Nợ)</th>
+                                <th class="py-3 px-4">Hạn Trả Đợt Tiếp</th>
+                                <th class="py-3 px-4">Trạng Thái</th>
+                                <th class="py-3 px-4 text-right">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-3.5 px-4 font-bold text-slate-800">Lê Hoàng Nam (BN-1029)</td>
+                                <td class="py-3.5 px-4">Mắc cài Kim loại Tự Buộc</td>
+                                <td class="py-3.5 px-4 font-bold">35.000.000 đ</td>
+                                <td class="py-3.5 px-4 font-bold text-emerald-600">20.000.000 đ</td>
+                                <td class="py-3.5 px-4 font-bold text-amber-600">15.000.000 đ</td>
+                                <td class="py-3.5 px-4">25/08/2026 (2.000.000 đ)</td>
+                                <td class="py-3.5 px-4"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Đúng Hạn</span></td>
+                                <td class="py-3.5 px-4 text-right">
+                                    <button onclick="alert('Đã thu đợt trả góp 2.000.000đ cho bệnh nhân Lê Hoàng Nam!')" class="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-2.5 py-1 rounded text-[11px]">Thu Tiền Đợt Này</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-3.5 px-4 font-bold text-slate-800">Trần Thị Mai Anh (BN-1088)</td>
+                                <td class="py-3.5 px-4">Invisalign Comprehensive</td>
+                                <td class="py-3.5 px-4 font-bold">80.000.000 đ</td>
+                                <td class="py-3.5 px-4 font-bold text-emerald-600">50.000.000 đ</td>
+                                <td class="py-3.5 px-4 font-bold text-amber-600">30.000.000 đ</td>
+                                <td class="py-3.5 px-4">01/09/2026 (5.000.000 đ)</td>
+                                <td class="py-3.5 px-4"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Đúng Hạn</span></td>
+                                <td class="py-3.5 px-4 text-right">
+                                    <button onclick="alert('Đã thu đợt trả góp 5.000.000đ cho bệnh nhân Trần Thị Mai Anh!')" class="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-2.5 py-1 rounded text-[11px]">Thu Tiền Đợt Này</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODAL: PATIENT EMR DETAILS ================= -->
+    <div id="patientDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-sky-500 text-white font-bold flex items-center justify-center text-lg">
+                        BN
+                    </div>
+                    <div>
+                        <h3 class="font-heading font-bold text-lg" id="modalPatientName">Hồ Sơ Bệnh Nhiên EMR</h3>
+                        <p class="text-xs text-slate-400" id="modalPatientCode">Mã số: BN-1029</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('patientDetailModal')" class="text-slate-400 hover:text-white text-xl font-bold p-1">&times;</button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6 flex-grow text-xs text-slate-700">
+                <!-- Section 1: Orthodontic Diagnosis -->
+                <div>
+                    <h4 class="font-heading font-bold text-sm text-sky-800 border-b border-slate-200 pb-2 mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                        <span>1. Bảng Chẩn Đoán Khớp Cắn & Chỉ Số Chỉnh Nha</span>
+                    </h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div>
+                            <span class="text-slate-400 block">Phân loại Angle:</span>
+                            <strong class="text-slate-800 font-bold text-sm">Class II, Nhánh 1</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Độ Cắn Chìa (Overjet):</span>
+                            <strong class="text-slate-800 font-bold text-sm">4.5 mm</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Độ Cắn Trùm (Overbite):</span>
+                            <strong class="text-slate-800 font-bold text-sm">3.0 mm (Sâu)</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block">Đường Giữa:</span>
+                            <strong class="text-slate-800 font-bold text-sm">Lệch Phải 1.5 mm</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Clinical Photos & Radiographs -->
+                <div>
+                    <h4 class="font-heading font-bold text-sm text-sky-800 border-b border-slate-200 pb-2 mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-images"></i>
+                        <span>2. Bộ Ảnh Lâm Sàng & Phim X-quang Panorama / Cephalo</span>
+                    </h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-slate-100 rounded-xl p-2 text-center border border-slate-200">
+                            <img src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=300&auto=format&fit=crop&q=80" alt="Intraoral" class="w-full h-24 object-cover rounded-lg mb-1">
+                            <span class="text-[10px] text-slate-500 font-medium">Trong miệng - Cung hàm trên</span>
+                        </div>
+                        <div class="bg-slate-100 rounded-xl p-2 text-center border border-slate-200">
+                            <img src="https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=300&auto=format&fit=crop&q=80" alt="Bite" class="w-full h-24 object-cover rounded-lg mb-1">
+                            <span class="text-[10px] text-slate-500 font-medium">Trong miệng - Khớp cắn thẳng</span>
+                        </div>
+                        <div class="bg-slate-100 rounded-xl p-2 text-center border border-slate-200">
+                            <img src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=300&auto=format&fit=crop&q=80" alt="Panorama" class="w-full h-24 object-cover rounded-lg mb-1">
+                            <span class="text-[10px] text-slate-500 font-medium">Phim X-Quang Panorama</span>
+                        </div>
+                        <div class="bg-slate-100 rounded-xl p-2 text-center border border-slate-200">
+                            <img src="https://images.unsplash.com/photo-1516549655169-df83a0774514?w=300&auto=format&fit=crop&q=80" alt="Cephalo" class="w-full h-24 object-cover rounded-lg mb-1">
+                            <span class="text-[10px] text-slate-500 font-medium">Phim Cephalometric</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Visit Progress Log -->
+                <div>
+                    <h4 class="font-heading font-bold text-sm text-sky-800 border-b border-slate-200 pb-2 mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-timeline"></i>
+                        <span>3. Nhật Ký Tái Khám & Lực Kéo Theo Thời Gian</span>
+                    </h4>
+                    <div class="space-y-2">
+                        <div class="p-3 bg-slate-50 rounded-xl border-l-4 border-sky-500 flex justify-between items-center">
+                            <div>
+                                <strong class="text-slate-800">Lần khám 14 (18/08/2026):</strong>
+                                <p class="text-slate-600 mt-0.5">Thay dây NiTi .016x.022. Cắm Minivis hàm trên bên phải vị trí R16-17. Lực kéo 150g.</p>
+                            </div>
+                            <span class="text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-1 rounded">Vừa hoàn tất</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border-l-4 border-slate-300 flex justify-between items-center">
+                            <div>
+                                <strong class="text-slate-800">Lần khám 13 (20/07/2026):</strong>
+                                <p class="text-slate-600 mt-0.5">Siết lò xo đẩy tạo khoảng R23. Bệnh nhân hợp tác tốt, vệ sinh răng miệng khá.</p>
+                            </div>
+                            <span class="text-[10px] font-medium text-slate-500">1 tháng trước</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-between items-center">
+                <button onclick="closeModal('patientDetailModal'); switchTab('viewer3d');" class="text-teal-600 hover:text-teal-800 font-bold text-xs flex items-center space-x-1">
+                    <i class="fa-solid fa-cube"></i>
+                    <span>Mở Mẫu Hàm 3D Trong Trình Xem</span>
+                </button>
+                <button onclick="closeModal('patientDetailModal')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs">Đóng Hồ Sơ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: 3D SNAPSHOT PREVIEW ================= -->
+    <div id="snapshotModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center">
+                <h3 class="font-heading font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-camera text-sky-400"></i>
+                    <span>Ảnh Chụp Màn Hình Dấu Hàm 3D</span>
+                </h3>
+                <button onclick="closeModal('snapshotModal')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="w-full h-56 bg-slate-900 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center">
+                    <img id="snapshotImgPreview" src="" alt="3D Snapshot" class="max-h-full object-contain">
+                </div>
+                <p class="text-xs text-slate-500">
+                    Ảnh chụp chất lượng cao định dạng PNG đã được trích xuất trực tiếp từ khung nhìn WebGL. Bạn có thể tải về máy tính hoặc đính kèm trực tiếp vào nhật ký điều trị EMR của bệnh nhân.
+                </p>
+            </div>
+            <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="downloadSnapshotPNG()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Tải File PNG</span>
+                </button>
+                <button onclick="attachSnapshotToRecord()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1">
+                    <i class="fa-solid fa-paperclip"></i>
+                    <span>Lưu Vào Hồ Sơ EMR</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC & THREE.JS 3D ENGINE -->
+    <script>
+        // --- 1. TAB NAVIGATION SYSTEM ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            const targetContent = document.getElementById(`tab-${tabId}`);
+            const targetBtn = document.getElementById(`nav-${tabId}`);
+
+            if (targetContent) targetContent.classList.remove('hidden');
+            if (targetBtn) targetBtn.classList.add('active');
+
+            // Resize 3D Canvas if 3D viewer tab is activated
+            if (tabId === 'viewer3d' && window.dental3DApp) {
+                setTimeout(() => window.dental3DApp.onWindowResize(), 100);
+            }
+        }
+
+        // --- 2. MODAL CONTROLLER ---
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function openPatientDetail(patientCode) {
+            document.getElementById('modalPatientCode').innerText = `Mã số: ${patientCode}`;
+            if (patientCode === 'BN-1029') document.getElementById('modalPatientName').innerText = 'Hồ Sơ: Lê Hoàng Nam';
+            if (patientCode === 'BN-1088') document.getElementById('modalPatientName').innerText = 'Hồ Sơ: Trần Thị Mai Anh';
+            if (patientCode === 'BN-1102') document.getElementById('modalPatientName').innerText = 'Hồ Sơ: Phạm Quốc Bảo';
+            openModal('patientDetailModal');
+        }
+
+        function loadSampleTo3D(patientCode) {
+            document.getElementById('active3dPatientName').innerText = `${patientCode}`;
+            switchTab('viewer3d');
+        }
+
+        function sendZaloReminder(patientName, timeStr) {
+            alert(`Đã tự động gửi tin nhắn Zalo ZNS nhắc lịch khám thành công tới bệnh nhân: ${patientName} (${timeStr})!`);
+        }
+
+        function filterPatientList() {
+            const query = document.getElementById('patientFilterInput').value.toLowerCase();
+            const typeVal = document.getElementById('typeFilter').value;
+            const cards = document.querySelectorAll('.patient-card');
+
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                const type = card.getAttribute('data-type');
+                const matchesName = name.includes(query);
+                const matchesType = (typeVal === 'ALL' || type.includes(typeVal));
+
+                if (matchesName && matchesType) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+
+        function switchRole(role) {
+            const userLabel = document.getElementById('userNameLabel');
+            const roleLabel = document.getElementById('userRoleLabel');
+            if (role === 'doctor') {
+                userLabel.innerText = 'BS. Nguyễn Minh Tuấn';
+                roleLabel.innerText = 'Trưởng Khoa Niềng Răng';
+            } else if (role === 'receptionist') {
+                userLabel.innerText = 'Phạm Thu Trang';
+                roleLabel.innerText = 'Lễ Tân / CRM';
+            } else {
+                userLabel.innerText = 'Đỗ Thanh Hà';
+                roleLabel.innerText = 'Kế Toán Trưởng';
+            }
+        }
+
+        // --- 3. THREE.JS 3D DENTAL JAW RENDERER ENGINE ---
+        class Dental3DEngine {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.upperArch = null;
+                this.lowerArch = null;
+                this.currentMaterialMode = 'gypsum';
+                this.isWireframe = false;
+                this.lastCapturedDataUrl = null;
+
+                this.init();
+            }
+
+            init() {
+                const width = this.container.clientWidth || 800;
+                const height = this.container.clientHeight || 500;
+
+                // 1. Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0f172a); // Dark sleek background
+
+                // 2. Camera
+                this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+                this.camera.position.set(0, 35, 75);
+
+                // 3. WebGL Renderer with preserveDrawingBuffer FOR SNAPSHOTS!
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    preserveDrawingBuffer: true
+                });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.container.appendChild(this.renderer.domElement);
+
+                // 4. Orbit Controls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // 5. Lighting Setup for Dental Viewing
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+                this.scene.add(ambientLight);
+
+                const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+                dirLight1.position.set(20, 40, 30);
+                this.scene.add(dirLight1);
+
+                const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.4); // Subtle blue fill light
+                dirLight2.position.set(-20, -20, -30);
+                this.scene.add(dirLight2);
+
+                // 6. Build Procedural Dental Jaw Model (Upper & Lower Arch)
+                this.buildDentalJaws();
+
+                // 7. Event listeners
+                window.addEventListener('resize', () => this.onWindowResize());
+
+                // 8. Animation loop
+                this.animate();
+            }
+
+            // Create 3D Arch of Gums & Teeth programmatically
+            buildDentalJaws() {
+                this.upperArch = new THREE.Group();
+                this.lowerArch = new THREE.Group();
+
+                const gypsumMat = new THREE.MeshStandardMaterial({
+                    color: 0xf1f5f9,
+                    roughness: 0.35,
+                    metalness: 0.05,
+                    side: THREE.DoubleSide
+                });
+
+                const naturalGumMat = new THREE.MeshStandardMaterial({
+                    color: 0xf43f5e,
+                    roughness: 0.5,
+                    side: THREE.DoubleSide
+                });
+
+                const naturalToothMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.2,
+                    metalness: 0.1
+                });
+
+                // Generate Parabolic Curve for Dental Arch
+                const createArch = (isUpper) => {
+                    const group = new THREE.Group();
+                    const toothCount = 14;
+
+                    for (let i = 0; i < toothCount; i++) {
+                        const t = (i / (toothCount - 1)) - 0.5; // -0.5 to 0.5
+                        const x = t * 24;
+                        const z = - (t * t) * 22;
+                        const y = isUpper ? 3 : -3;
+
+                        // Tooth mesh
+                        const toothGeo = new THREE.CylinderGeometry(0.9, 1.2, 2.8, 12);
+                        const toothMesh = new THREE.Mesh(toothGeo, gypsumMat);
+                        toothMesh.position.set(x, y, z);
+                        toothMesh.rotation.x = isUpper ? -0.1 : 0.1;
+                        toothMesh.castShadow = true;
+                        toothMesh.receiveShadow = true;
+                        toothMesh.userData = { type: 'tooth' };
+
+                        group.add(toothMesh);
+                    }
+
+                    // Gum Base Arch
+                    const gumGeo = new THREE.TorusGeometry(12, 2.2, 12, 32, Math.PI);
+                    const gumMesh = new THREE.Mesh(gumGeo, gypsumMat);
+                    gumMesh.rotation.x = Math.PI / 2;
+                    gumMesh.position.set(0, isUpper ? 4.2 : -4.2, -6);
+                    gumMesh.scale.set(1, 0.8, 0.9);
+                    gumMesh.userData = { type: 'gum' };
+
+                    group.add(gumMesh);
+                    return group;
+                };
+
+                this.upperArch = createArch(true);
+                this.lowerArch = createArch(false);
+
+                // Slight Occlusion position offset
+                this.upperArch.position.y = 1.2;
+                this.lowerArch.position.y = -1.2;
+
+                this.scene.add(this.upperArch);
+                this.scene.add(this.lowerArch);
+            }
+
+            setArchVisibility(mode) {
+                if (mode === 'both') {
+                    this.upperArch.visible = true;
+                    this.lowerArch.visible = true;
+                } else if (mode === 'upper') {
+                    this.upperArch.visible = true;
+                    this.lowerArch.visible = false;
+                } else if (mode === 'lower') {
+                    this.upperArch.visible = false;
+                    this.lowerArch.visible = true;
+                }
+            }
+
+            setMaterialMode(mode) {
+                this.currentMaterialMode = mode;
+                const updateGroup = (group) => {
+                    group.children.forEach(child => {
+                        if (mode === 'gypsum') {
+                            child.material = new THREE.MeshStandardMaterial({
+                                color: 0xf1f5f9,
+                                roughness: 0.35,
+                                wireframe: this.isWireframe
+                            });
+                        } else {
+                            if (child.userData.type === 'tooth') {
+                                child.material = new THREE.MeshStandardMaterial({
+                                    color: 0xffffff,
+                                    roughness: 0.2,
+                                    wireframe: this.isWireframe
+                                });
+                            } else {
+                                child.material = new THREE.MeshStandardMaterial({
+                                    color: 0xe11d48,
+                                    roughness: 0.5,
+                                    wireframe: this.isWireframe
+                                });
+                            }
+                        }
+                    });
+                };
+                updateGroup(this.upperArch);
+                updateGroup(this.lowerArch);
+            }
+
+            toggleWireframeMode() {
+                this.isWireframe = !this.isWireframe;
+                this.setMaterialMode(this.currentMaterialMode);
+            }
+
+            captureSnapshotPNG() {
+                // Force a render frame
+                this.renderer.render(this.scene, this.camera);
+                // Extract WebGL canvas buffer
+                const dataUrl = this.renderer.domElement.toDataURL('image/png');
+                this.lastCapturedDataUrl = dataUrl;
+                return dataUrl;
+            }
+
+            onWindowResize() {
+                if (!this.container) return;
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize 3D Engine on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            window.dental3DApp = new Dental3DEngine('threeCanvasContainer');
+            initRevenueChart();
+        });
+
+        function setArchView(mode) {
+            if (window.dental3DApp) window.dental3DApp.setArchVisibility(mode);
+        }
+
+        function setMaterialMode(mode) {
+            if (window.dental3DApp) window.dental3DApp.setMaterialMode(mode);
+        }
+
+        function toggleWireframe() {
+            if (window.dental3DApp) window.dental3DApp.toggleWireframeMode();
+        }
+
+        function take3DSnapshot() {
+            if (!window.dental3DApp) return;
+            const dataUrl = window.dental3DApp.captureSnapshotPNG();
+
+            // Toast feedback
+            const toast = document.getElementById('snapshotToast');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2500);
+
+            // Preview modal
+            document.getElementById('snapshotImgPreview').src = dataUrl;
+            openModal('snapshotModal');
+        }
+
+        function downloadSnapshotPNG() {
+            if (!window.dental3DApp || !window.dental3DApp.lastCapturedDataUrl) return;
+            const link = document.createElement('a');
+            link.href = window.dental3DApp.lastCapturedDataUrl;
+            link.download = `mau_ham_3d_${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function attachSnapshotToRecord() {
+            alert('Đã đính kèm ảnh góc nhìn 3D thành công vào hồ sơ bệnh án EMR!');
+            closeModal('snapshotModal');
+        }
+
+        // --- 4. CHART.JS REVENUE ANALYTICS ---
+        function initRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['T3', 'T4', 'T5', 'T6', 'T7', 'T8'],
+                    datasets: [{
+                        label: 'Doanh thu trả góp (Trđ)',
+                        data: [120, 145, 160, 150, 175, 185],
+                        backgroundColor: '#0284c7',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+```eof
+
+### Các mô-đun đã được triển khai sẵn trong ứng dụng Web:
+1. **Giao diện Responsive & Phân quyền Role-based:** Cho phép chuyển đổi nhanh góc nhìn công việc giữa Bác sĩ Chỉnh Nha, Lễ Tân / CRM và Kế Toán.
+2. **Hồ sơ Bệnh án Điện tử (EMR):** Quản lý chi tiết phân loại chẩn đoán Angle Class I/II/III, độ cắn chìa, cắn trùm, phim X-quang Panorama/Cephalo và nhật ký siết răng theo lịch trình.
+3. **Trình xem Mẫu Hàm 3D WebGL (Three.js):** Tích hợp engine 3D trực tiếp trên trình duyệt, hỗ trợ xoay 360 độ, chuyển đổi góc nhìn hàm trên/hàm dưới, chế độ bề mặt thạch cao/khung dây wireframe và **nút chụp ảnh PNG chất lượng cao**.
+4. **Tự động hóa nhắc lịch Zalo ZNS:** Giao diện điều phối lịch khám và gửi thông báo nhắc siết răng/đổi khay niềng theo thời gian thực.
+5. **Quản lý Tài chính & Trả góp:** Theo dõi hợp đồng niềng răng, công nợ đợt tiếp theo và biểu đồ thu tiền hàng tháng.
